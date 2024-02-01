@@ -1,300 +1,246 @@
 #include <iostream>
-#include <iomanip>
-#include <random>
-#include <cmath>
-#include <fstream>
-#include <map>
-#include <algorithm>
-#include <limits>
-#include <list>
-#include <string>
+#include <cstdlib>
 #include <ctime>
-using namespace std;
+#include <string>
+const int BOARD_SIZE = 7;
+const int NUM_SHIPS_OF_LENGTH_3 = 1;
+const int NUM_SHIPS_OF_LENGTH_2 = 2;
+const int NUM_SHIPS_OF_LENGTH_1 = 4;
 
-const int fieldCells = 0;
-const int missed = 1;
-const int hitted = 2;
-int amountOfShips = 5;
-const int MAX_PLAYERS = 100;
+int board[BOARD_SIZE][BOARD_SIZE];
+int game[BOARD_SIZE][BOARD_SIZE];
+bool isValidPosition(int x, int y) {
+    return (x >= 0 && x < BOARD_SIZE && y >= 0 && y < BOARD_SIZE);
+}
 
-struct PlayerScore {
-  string name;
-  int score;
-};
-
-void readScoreboardFromFile(PlayerScore scoreboard[], int& numPlayers, const string& filename) {
-  ifstream file(filename);
-
-  numPlayers = 0;
-  while (file >> scoreboard[numPlayers].name >> scoreboard[numPlayers].score) {
-    numPlayers++;
-    if (numPlayers >= MAX_PLAYERS) {
-      break;
+bool isAdjacent(int x, int y) {
+    for (int i = -1; i <= 1; ++i) {
+        for (int j = -1; j <= 1; ++j) {
+            int newX = x + i;
+            int newY = y + j;
+            if (isValidPosition(newX, newY) && board[newX][newY] != 0) {
+                return true;
+            }
+        }
     }
-  }
-}
-
-void writeScoreboardToFile(const PlayerScore scoreboard[], int numPlayers, const string& filename) {
-  ofstream file(filename);
-
-  for (int i = 0; i < numPlayers; ++i) {
-    file << scoreboard[i].name << " " << scoreboard[i].score << "\n";
-  }
-}
-
-bool comparePlayerScores(const PlayerScore& a, const PlayerScore& b) {
-  return a.score < b.score;
-}
-
-void sortScoreboard(PlayerScore scoreboard[], int numPlayers) {
-  sort(scoreboard, scoreboard + numPlayers, comparePlayerScores);
-}
-
-void waitForEnter() {
-  cout << "Press Enter to continue...";
-  cin.clear();
-  cin.ignore(numeric_limits<streamsize>::max(), '\n');
-  cin.get();
-  system("clear");
-}
-
-void printBoard(int board[10][10]) {
-  cout << " ";
-  for (int j = 0; j < 10; ++j)
-  {
-    cout << j << " ";
-  }
-  cout << "\n";
-
-  for (int i = 0; i < 10; i++) {
-    cout << i << " ";
-    for (int j = 0; j < 10; j++) {
-      if (board[i][j] == fieldCells) {
-        cout << "- ";                          
-      } else if (board[i][j] == missed) {                     
-        cout << "* ";                                       
-      } else if (board[i][j] == hitted) {                        
-        cout << "x ";                                       
-      } else if (board[i][j] == amountOfShips) {
-        cout << "S ";
-      }
-    }
-    cout << endl;
-  }
-}
-
-int canPlaceShip(int field[10][10], int start_x, int end_x, int start_y, int end_y) {
-  if (start_x < 0 || end_x >= 10 || start_y < 0 || end_y >= 10) {
     return false;
-  }
-
-  for (int i = start_x - 1; i <= end_x + 1; i++) {
-    for (int j = start_y - 1; j <= end_y + 1; j++) {
-      if (i >= 0 && i < 10 && j >= 0 && j < 10 && field[i][j] != 0) {
-        return false;
-      }
-    }
-  }
-
-  for (int i = start_x; i <= end_x; i++) {
-    for (int j = start_y; j <= end_y; j++) {
-      if (field[i][j] != 0) {
-        return false;
-      }
-    }
-  }
-
-  for (int i = start_x; i <= end_x; i++) {
-    for (int j = start_y; j <= end_y; j++) {
-      if ((i > 0 && field[i - 1][j] != 0) ||
-          (i < 9 && field[i + 1][j] != 0) ||
-          (j > 0 && field[i][j - 1] != 0) ||
-          (j < 9 && field[i][j + 1] != 0)) {
-        return false;
-      }
-    }
-  }
-  return true;
 }
 
-void randomPlaceShip(int field[10][10], int shipLength) {
-  random_device rd;
-  mt19937 gen(rd());
-  uniform_int_distribution<int> dist(0, 9);
-
-  while (true) {
-    bool isHorizontal = dist(gen) % 2 == 0;
-    int start_x, end_x, start_y, end_y;
-
-    if (isHorizontal) {
-      start_y = (dist(gen) % 10) - shipLength + 1;
-      end_y = start_y + shipLength - 1;
-      start_x = dist(gen) % 10;
-      end_x = start_x;
+bool isValidPlacement(int x, int y, int shipLength, bool horizontal) {
+    if (horizontal) {
+        if (y + shipLength > BOARD_SIZE) {
+            return false;
+        }
+        for (int i = y; i < y + shipLength; ++i) {
+            if (board[x][i] != 0 || isAdjacent(x, i)) {
+                return false;
+            }
+        }int game[BOARD_SIZE][BOARD_SIZE];
     } else {
-      start_x = (dist(gen) % 10) - shipLength + 1;
-      end_x = start_x + shipLength - 1;
-      start_y = dist(gen) % 10;
-      end_y = start_y;
-    }
-
-    if (canPlaceShip(field, start_x, end_x, start_y, end_y)) {
-      for (int i = start_x; i <= end_x; i++) {
-        for (int j = start_y; j <= end_y; j++) {
-          field[i][j] = amountOfShips;
+        if (x + shipLength > BOARD_SIZE) {
+            return false;
         }
-      }
-      break;
-    }
-  }
-}
-
-int noShip(int field[10][10], int x, int y) {
-  int result = 0;
-  for (int i = max(0, x - 1); i <= min(10, x + 1); i++) {
-    for (int j = max(0, y - 1); j <= min(10, y + 1); j++) {
-      if (field[i][j] == amountOfShips) {
-        result++;
-      }
-    }
-  }
-  return result;
-}
-
-
-
-void shipDestroyed(int field[10][10], int x, int y) {
-  int new_x = 99, new_y = 99;
-  for (int i = max(0, x - 1); i <= min(10, x + 1); i++) {
-    for (int j = max(0, y - 1); j <= min(10, y + 1); j++) {
-      if (field[i][j] == hitted) {
-        new_x = i;
-        new_y = j;
-        field[i][j] = missed;
-      }
-      field[i][j] = missed;
-    }
-  }
-  if (new_x != 99) {
-    shipDestroyed(field, new_x, new_y);
-  }
-}
-
-void mainGame(int ships[10][10], int you[10][10], int& score) {
-  int win = 0, main_count = 0;
-  cout << "\nWelcome to the Sea Battle\n\n";
-  while (win == 0) {
-    int a, b, pop = 0, count = 0;
-    printBoard(you);
-    cout  << "\nEnter the coordinates of an attack!: ";
-    cin >> a >> b;
-    if (b < 0 || b > 10 || a < 0 || a > 10) {
-      while (b < 0 || b > 10 || a < 0 || a > 10) {
-        cout << "The coordinates are incorrect! Write another coordinates!: ";
-        cin >> a >> b;
-      }
-    }
-    if (ships[a][b] == 1 || ships[a][b] == 2 || ships[a][b] == 3) {
-      while (ships[a][b] == 1 || ships[a][b] == 2 || ships[a][b] == 3) {
-        cout << "You already have hitten this point. Write another!: ";
-        cin >> a >> b;
-      }
-    }
-    if (ships[a][b] == 0) {
-      cout << "\nMiss!\n" << endl;
-      ships[a][b] = missed;
-      you[a][b] = missed;
-      printBoard(you);
-    } else if (ships[a][b] == amountOfShips and noShip(ships, a, b) == 1) {
-      cout << "\nSunk!\n";
-      shipDestroyed(ships, a, b);
-      shipDestroyed(you, a, b);
-      printBoard(you);
-    } else if (ships[a][b] == amountOfShips and noShip(ships, a, b) > 1) {
-      cout << "\nHit!\n";
-      ships[a][b] = hitted;
-      you[a][b] = hitted;
-      printBoard(you);
-    }
-    main_count++;
-
-    for (int i = 0; i < 10; i++) {
-      for (int j = 0; j < 10; j++) {
-        if (ships[i][j] == 5) {
-          pop++;
+        for (int i = x; i < x + shipLength; ++i) {
+            if (board[i][y] != 0 || isAdjacent(i, y)) {
+                return false;
+            }
         }
-      }
     }
-    if (pop != 0) {
-      waitForEnter();
+    return true;
+}
+
+void placeShip(int x, int y, int shipLength, bool horizontal, int shipNumber) {
+    if (horizontal) {
+        for (int i = y; i < y + shipLength; ++i) {
+            board[x][i] = shipNumber;
+        }
     } else {
-      win = 1;
-      if (main_count == 0) {
-        main_count = count;
-      } else {
-        if (count > main_count) {
-          main_count = count;
+        for (int i = x; i < x + shipLength; ++i) {
+            board[i][y] = shipNumber;
         }
-      }
     }
-  }
-
-  string answer;
-  cout << endl << "The amount of your attempts: " << main_count <<"\n\nDo you want to continue? [y/n]: ";
-  cin >> answer;
-  if (answer == "y") {
-    mainGame(ships, you, score);
-  } else {
-    score = main_count;
-  }
 }
 
+void placeShipsRandomly() {
+    int shipsPlaced = 0;
+    while (shipsPlaced < NUM_SHIPS_OF_LENGTH_3) {
+        int x = rand() % BOARD_SIZE;
+        int y = rand() % BOARD_SIZE;
+        bool horizontal = rand() % 2 == 0;
+        if (isValidPlacement(x, y, 3, horizontal)) {
+            placeShip(x, y, 3, horizontal, 3);
+            shipsPlaced++;
+        }
+    }
+
+    shipsPlaced = 0;
+    while (shipsPlaced < NUM_SHIPS_OF_LENGTH_2) {
+        int x = rand() % BOARD_SIZE;
+        int y = rand() % BOARD_SIZE;
+        bool horizontal = rand() % 2 == 0;
+        if (isValidPlacement(x, y, 2, horizontal)) {
+            placeShip(x, y, 2, horizontal, 2);
+            shipsPlaced++;
+        }
+    }
+
+    shipsPlaced = 0;
+    while (shipsPlaced < NUM_SHIPS_OF_LENGTH_1) {
+        int x = rand() % BOARD_SIZE;
+        int y = rand() % BOARD_SIZE;
+        if (board[x][y] == 0 && !isAdjacent(x, y)) {
+            placeShip(x, y, 1, true, 1);
+            shipsPlaced++;
+        }
+    }
+}
+
+void displayBoard() {
+      std::cout << "  1 2 3 4 5 6 7\n";
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+       std:: cout<<i+1<<" ";
+        for (int j = 0; j < BOARD_SIZE; ++j) {
+            std::cout << board[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std:: cout<<'\n';
+}
+
+void displayGame() {
+      std::cout << "  1 2 3 4 5 6 7\n";
+    for (int i = 0; i < BOARD_SIZE; ++i) {
+      std:: cout<<i+1<<" ";
+        for (int j = 0; j < BOARD_SIZE; ++j) {
+            std::cout << game[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+      std:: cout<<'\n';
+}
+void clear(){
+      // Clear screen using escape sequences based on different operating systems
+            #ifdef _WIN32
+            system("cls"); // For Windows
+            #else
+            // For Unix-like systems (Linux, macOS)
+            std::cout << "\033[2J\033[1;1H"; // ANSI escape codes to clear screen
+            std::cout.flush(); // Flush output
+            #endif
+}
+
+void play(){
+      clear();
+      int count=0;
+      for (int i = 0; i < BOARD_SIZE; ++i) {
+            for (int j = 0; j < BOARD_SIZE; ++j) {
+                  game[i][j] = 0;
+            }
+      }
+
+      placeShipsRandomly();
+
+    
+      displayBoard();
+      std:: cout<<'\n';
+
+      displayGame();
+      std:: cout<<'\n';
+      int big=1, med=2, sm=4;
+      int x,y,q,w;
+      while (big >0 or med>0 or sm>0)
+      {
+            std:: cin>>x>>y;
+            q=x-1; w=y-1;
+            if(x > 7 or y > 7){
+                  
+                  clear();
+                  std:: cout<<"You put coordinates incorect! Try again!";
+                  std :: cout<<'\n';
+                  displayGame();
+            }
+            else if(game[q][w]==8 or game[q][w]==5){
+                  
+                  clear();
+                  std :: cout<<"Sorry you already hit this place";
+                  std :: cout<<'\n';
+                  displayGame();
+            }
+            else{
+                  if(game[q][w]!=board[q][w]){
+                        clear();
+                        if(board[q][w]==1){
+                              std :: cout<<"Sunk!";
+                              sm--;
+                              game[q][w]=5;
+                              std:: cout<<'\n';
+                              displayGame();
+
+                        }
+                        if(board[q][w]==2){
+                              game[q][w]=5;
+                              if(game[q-1][w]==5 or game[q+1][w]==5 or game[q][w-1]==5 or game[q][w+1]==5 ){
+                                    std :: cout<<"Sunk!";
+                                    med--;
+                                    game[q][w]=5;
+                                    std:: cout<<'\n';
+                                    displayGame();
+                              }
+                              else{
+                                    std :: cout<<"Hit!"<<'\n';
+                                    displayGame();
+                              }
+                        }
+                        if(board[q][w]==3){
+                              game[q][w]=5;
+                              if(game[q-1][w]==5 or game[q+1][w]==5 or game[q][w-1]==5 or game[q][w+1]==5){
+                                    if( game[q-2][w]==5 or game[q+2][w]==5 or game[q][w-2]==5 or game[q][w+2]==5){
+                                          std :: cout<<"Sunk!";
+                                          big--;
+                                          game[q][w]=5;
+                                          std:: cout<<'\n';
+                                          displayGame();
+                                    }
+                                    else{
+                                          std :: cout<<"Hit!"<<'\n';
+                                          displayGame();
+                                    }
+                                    
+                              }
+                              else{
+                                    std :: cout<<"Hit!"<<'\n';
+                                    displayGame();
+                              }
+                        }
+                  }
+                  else{
+                        clear();
+                        std :: cout<<"You miss!";
+                        std:: cout<<'\n';
+                        game[q][w]=8;
+                        displayGame();
+                        }
+         
+                  }
+            count++;
+      } 
+      char ans;
+      std:: cout<<"Congratulations! "<<"Your count of hit is "<<count<<". Do you want to play again? Y or N"<<'\n';
+      std :: cin>>ans;
+      if(ans=='Y'){
+            play();
+      }
+      else std:: cout<< "Good luck!";
+
+}
 int main() {
-  int field[10][10], shipsMap[10][10], score = 0;
-  for (int i = 0; i < 10; i++)
-  {
-    for (int j = 0; j < 10; j++)
-    {
-      field[i][j] = 0;
-      shipsMap[i][j] = 0;
-    }
-  }
-  
-  int ships[] = {1, 1, 1, 1, 2, 2, 3};
-  for (int i = 0; i < 10; i++)
-  {
-    randomPlaceShip(field, ships[i]);
-  }
+      std ::  string name;
+      srand(static_cast<unsigned int>(time(0)));
+      std:: cout<<"Hello, input your name!"<<'\n';
+      std:: cin>>name;
+      std :: cout<<'\n';
+      play();
 
-  PlayerScore scoreboard[MAX_PLAYERS];
-  int numPlayers = 0;
 
-  string filename = "record.txt";
-  readScoreboardFromFile(scoreboard, numPlayers, filename);   
-
-  string name;
-  cout << "Hi there! Input your name: ";
-  cin >> name;
-  cout << "The rules: \n* - miss \nx-hitted";
-  mainGame(field, shipsMap, score);
-
-  if (numPlayers < MAX_PLAYERS) {
-    scoreboard[numPlayers].name = name;
-    scoreboard[numPlayers].score = score;
-    numPlayers++;
-  } else {
-    if (score > scoreboard[MAX_PLAYERS - 1].score) {
-      scoreboard[MAX_PLAYERS - 1].name = name;
-      scoreboard[MAX_PLAYERS - 1].score = score;
-    }
-  }
-
-  sortScoreboard(scoreboard, numPlayers);
-  writeScoreboardToFile(scoreboard, numPlayers, filename);
-
-  cout << "\nScoreboard:\n";
-  for (int i = 0; i < numPlayers; ++i) {
-    cout << scoreboard[i].name << ": " << scoreboard[i].score << endl;
-  }
-  return 0;
 }
+       
